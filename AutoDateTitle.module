@@ -1,0 +1,61 @@
+<?php
+
+class AutoDateTitle extends WireData implements Module, ConfigurableModule {
+
+    public static function getModuleInfo() {
+        return array(
+            'title' => 'AutoDateTitle',
+            'version' => 100,
+            'summary' => 'Prefill the title field with configurable date string',
+            'singular' => true,
+            'autoload' => true,
+            'href' => 'https://github.com/johannesdachsel/processwire-autodatetitle'
+        );
+    }
+    
+    protected static $defaults = array(
+		'parent_page' => '',
+		'date_string' => 'Y-m-d'
+	);
+    
+    public static function getModuleConfigInputfields(array $data) {
+		$data = array_merge(self::$defaults, $data);	
+		$fields = new InputfieldWrapper();
+		$modules = wire('modules');
+		$templates = wire('templates');
+		
+		// Parent page option
+		$field = $modules->get('InputfieldPageListSelect');
+	    $field->label = 'Parent page';
+	    $field->name = 'parent_page';
+	    $field->attr('value', $data['parent_page']);
+	    $field->columnWidth = '50';
+	    $fields->append($field);
+		
+		// Date string option
+		$field = $modules->get('InputfieldText');
+	    $field->label = 'Date string';
+	    $field->name = 'date_string';
+	    $field->attr('value', $data['date_string']);
+	    $field->columnWidth = '50';
+	    $fields->append($field);
+		
+		return $fields;
+	}
+
+    public function init() {
+        $this->addHookBefore("Inputfield::render", $this, "prefillTitle");
+    }
+
+    public function prefillTitle($event){
+        $parent_id = wire('input')->get->parent_id;
+        $config_parent_id = wire('pages')->get($this->parent_page)->id;
+        $field = $event->object;
+        if($parent_id == $config_parent_id){
+	    	if(($field->name == 'title' || $field->name == '_pw_page_name') && $field->value == '') {				        
+	            $date_value = date($this->date_string, strtotime("now"));
+	            $field->set('value', $date_value);
+	        }   
+        }
+    }
+}
